@@ -1,0 +1,16 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.codeActionsOnSave": { "source.fixAll.eslint": "explicit" },
+  "eslint.validate": ["javascript","javascriptreact","typescript","typescriptreact"],
+  "eslint.useFlatConfig": false
+}
+{  "editor.inlineSuggest.enabled": true,
+  "github.copilot.editor.enableAutoCompletions": true,
+  "editor.suggest.showWords": true,
+  "editor.acceptSuggestionOnEnter": "smart",
+  "files.autoSave": "onFocusChange",
+  "editor.formatOnSave": true,
+  "prettier.singleQuote": true,
+  "prettier.semi": false
+}
