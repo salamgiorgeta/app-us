@@ -1,0 +1,44 @@
+# Node modules
+node_modules/
+
+# Output Next.js build
+.next/
+out/
+build/
+build-output/
+
+# Local build artifacts
+app-us-build.zip
+*.zip
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files (secrete)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE configs
+.vscode/
+.idea/
+*.swp
+
+# pnpm cache
+.pnpm-store/
+pnpm-lock.yaml
+
+# Generated coverage
+coverage/
+
+# Misc
+*.log
