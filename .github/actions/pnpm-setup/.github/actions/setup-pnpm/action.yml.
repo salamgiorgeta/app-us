@@ -1,44 +1,42 @@
-name: Setup pnpm v9 with Corepack
-description: Enable Corepack, prepare pnpm, cache pnpm store, and make pnpm available in PATH
+name: Setup Node & pnpm v9
+description: "Setup Node.js + pnpm v9 via Corepack și (opțional) pnpm install"
 inputs:
-  node-version:
-    description: Node.js version to use
+  node_version:
+    description: "Node.js version"
     required: false
-    default: '20'
-  pnpm-version:
-    description: pnpm version to activate via Corepack
+    default: "20"
+  pnpm_version:
+    description: "pnpm version"
     required: false
-    default: '9.15.4'
-  cache-dep-path:
-    description: File(s) that influence pnpm store cache key
+    default: "9.15.4"
+  install:
+    description: "Rulează pnpm install"
     required: false
-    default: 'pnpm-lock.yaml'
+    default: "true"
+  lockfile:
+    description: "Calea către pnpm-lock.yaml pentru cache"
+    required: false
+    default: "pnpm-lock.yaml"
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: ${{ inputs.node-version }}
+        node-version: ${{ inputs.node_version }}
+        cache: pnpm
+        cache-dependency-path: ${{ inputs.lockfile }}
 
-    - name: Enable Corepack and activate pnpm
+    - name: Enable Corepack & activate pnpm
       shell: bash
       run: |
         corepack enable
-        corepack prepare pnpm@${{ inputs.pnpm-version }} --activate
-        echo "pnpm version:"; pnpm -v
-        echo "node version:"; node -v
+        corepack prepare pnpm@${{ inputs.pnpm_version }} --activate
+        echo "pnpm: $(pnpm -v)"
+        echo "node: $(node -v)"
 
-    - name: Cache pnpm store
-      uses: actions/cache@v4
-      with:
-        path: ~/.pnpm-store
-        key: ${{ runner.os }}-pnpm-store-${{ hashFiles(inputs.cache-dep-path) }}
-        restore-keys: |
-          ${{ runner.os }}-pnpm-store-
-
-    # Dacă vrei să NU instalezi aici dependențele, comentează pasul de mai jos
     - name: Install dependencies
+      if: ${{ inputs.install == 'true' }}
       shell: bash
       run: pnpm install --no-frozen-lockfile
