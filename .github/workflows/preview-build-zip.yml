@@ -1,0 +1,37 @@
+name: Preview build (zip)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-zip:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: 1
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Package build into zip
+        run: |
+          rm -rf dist && mkdir -p dist
+          cp -r .next dist/.next
+          [ -d public ] && cp -r public dist/public || true
+          cd dist && zip -r ../app-us-build.zip . && cd -
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-us-build-${{ github.run_number }}
+          path: app-us-build.zip
+          retention-days: 7
