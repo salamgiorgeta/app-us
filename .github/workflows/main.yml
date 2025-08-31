@@ -6,7 +6,6 @@ on:
   pull_request:
     branches: [ main ]
 
-# nu rula 2 pipeline-uri simultan pe aceeași ramură
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -16,16 +15,13 @@ env:
   NEXT_TELEMETRY_DISABLED: "1"
 
 jobs:
-  # 🔑 Setări comune + cache pnpm store; celelalte joburi profită din cache
   lint:
     name: Lint
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js (+ cache pnpm)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
@@ -35,12 +31,11 @@ jobs:
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
           pnpm -v
-          node -v
 
-      - name: Install deps (fast via pnpm store cache)
+      - name: Install deps
         run: pnpm install --prefer-offline --no-frozen-lockfile
 
-      - name: Lint
+      - name: Run lint
         run: pnpm lint
 
   test:
@@ -53,14 +48,11 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
-      - name: Enable Corepack & pnpm v9
-        run: |
+      - run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
-      - name: Install deps
-        run: pnpm install --prefer-offline --no-frozen-lockfile
-      - name: Run tests (skip dacă nu există)
-        run: pnpm test --if-present
+      - run: pnpm install --prefer-offline --no-frozen-lockfile
+      - run: pnpm test --if-present
 
   build:
     name: Build
@@ -68,22 +60,14 @@ jobs:
     needs: [test]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js (+ cache pnpm)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-
-      - name: Enable Corepack & pnpm v9
-        run: |
+      - run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
-
-      - name: Install deps
-        run: pnpm install --prefer-offline --no-frozen-lockfile
-
-      # (opțional) cache pentru .next/cache: grăbește build-urile repetate
+      - run: pnpm install --prefer-offline --no-frozen-lockfile
       - name: Cache Next.js build cache
         uses: actions/cache@v4
         with:
@@ -91,12 +75,8 @@ jobs:
           key: ${{ runner.os }}-next-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             ${{ runner.os }}-next-
-
-      - name: Build
-        run: pnpm build
-
-      - name: Upload Next.js build artifact
-        uses: actions/upload-artifact@v4
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
         with:
           name: next-build
           path: |
