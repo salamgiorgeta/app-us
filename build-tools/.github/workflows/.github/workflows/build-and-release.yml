@@ -1,0 +1,84 @@
+name: CI Preview + Release (Next.js + pnpm + ZIP)
+
+on:
+  push:
+    branches: [main] # build & artifact la fiecare push pe main
+    tags: ["v*"] # dacă e tag v*, e și Release
+  pull_request: # build & artifact pentru PR-uri (preview)
+  workflow_dispatch:
+
+permissions:
+  contents: write # necesar doar ca să atașezi asset la Release
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (22) & pnpm (corepack)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+      - name: Enable pnpm via corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@latest --activate
+          pnpm -v
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (optional)
+        run: pnpm run lint || true
+
+      - name: Build (Next.js)
+        run: pnpm run build
+
+      - name: Stage bundle (pentru ZIP)
+        run: |
+          STAGE=".server_release_stage"
+          rm -rf "$STAGE" && mkdir -p "$STAGE"
+          cp -R .next "$STAGE/.next"
+          if [ -d public ]; then cp -R public "$STAGE/public"; fi
+          cp package.json "$STAGE/"
+          [ -f pnpm-lock.yaml ] && cp pnpm-lock.yaml "$STAGE/"
+          ls next.config.*  >/dev/null 2>&1 && cp next.config.*  "$STAGE/" || true
+          [ -f tsconfig.json ]         && cp tsconfig.json       "$STAGE/"
+          [ -f postcss.config.mjs ]    && cp postcss.config.mjs  "$STAGE/"
+          [ -f tailwind.config.ts ]    && cp tailwind.config.ts  "$STAGE/"
+          [ -f .env.example ]          && cp .env.example        "$STAGE/"
+          ( cd "$STAGE" && zip -qr ../app-us-build.zip . )
+
+      - name: Upload artifact (Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-us-build
+          path: app-us-build.zip
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Create/Update GitHub Release (doar pe tag v*)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: app-us-build.zip
+
+      - name: Trigger Vercel Production (optional, pe tag v*)
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -n "$HOOK" ]; then
+            curl -fsS -X POST "$HOOK"
+            echo "Vercel deploy hook triggered."
+          else
+            echo "VERCEL_DEPLOY_HOOK_URL not set — skipping."
+          fi

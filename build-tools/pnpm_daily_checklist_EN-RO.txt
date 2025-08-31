@@ -1,0 +1,22 @@
+📑 pnpm — Daily Workflow (EN–RO)
+
+1) Install deps / Instalează dependențele
+   pnpm install
+
+2) Dev server / Server dezvoltare
+   pnpm dev   # http://localhost:3000
+
+3) Lint & format / Stil & formatare
+   pnpm lint
+   pnpm format
+
+4) Build prod / Build producție
+   pnpm build
+
+5) Start prod / Rulează producție
+   pnpm start
+
+6) Git → Deploy (Vercel)
+   git add .
+   git commit -m "feat: ..."
+   git push origin main
