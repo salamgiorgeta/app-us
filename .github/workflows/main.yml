@@ -13,14 +13,24 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      # Node 20 + cache pentru pnpm (se bazează pe pnpm-lock.yaml)
+      - name: Setup Node.js (with pnpm cache)
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'pnpm'
 
-      - name: Install pnpm
+      # Instalăm explicit pnpm v9 (stabil)
+      - name: Install pnpm v9
         run: npm install -g pnpm@9
 
+      # (opțional) Arată versiunile în log — util pentru debug
+      - name: Print tool versions
+        run: |
+          node -v
+          pnpm -v
+
+      # Instalare dependințe (fără a bloca pe lockfile vechi)
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
@@ -30,6 +40,7 @@ jobs:
       - name: Run build
         run: pnpm build
 
+      # Upload artefact build (utile pentru download rapid / inspectare)
       - name: Upload Next.js build artifact
         uses: actions/upload-artifact@v4
         with:
