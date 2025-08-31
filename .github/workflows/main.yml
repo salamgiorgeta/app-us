@@ -124,13 +124,16 @@ jobs:
           name: next-build
           path: ./
 
-      # (opțional) listăm ce a venit in artifact – util pentru debug
-      - name: Show artifact content
-        run: |
-          ls -la
-          du -sh .next || true
+      deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: next-build
+          path: ./
 
-      # Pregătim config-ul local pentru Vercel (env + link proiect)
       - name: Vercel pull (populate .vercel)
         run: |
           pnpm dlx vercel@latest pull --yes --environment=production \
@@ -139,7 +142,6 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
-      # Deploy prebuilt (NU rebuilduiește; folosește .next/ din artifact)
       - name: Vercel deploy (prebuilt)
         id: vercel
         run: |
