@@ -1,11 +1,11 @@
 name: CI (pnpm + Next)
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,19 +24,19 @@ jobs:
           version: 9
 
       - name: Install dependencies
-      run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
 
-    - name: Run lint
-      run: pnpm lint
+      - name: Run lint
+        run: pnpm lint
 
-    - name: Run build
-      run: pnpm build
+      - name: Run build
+        run: pnpm build
 
-    - name: Upload Next.js build artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: next-build
-        path: |
-          .next/**
-          public/**
-        retention-days: 5
+      - name: Upload Next.js build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: next-build
+          path: |
+            .next/**
+            public/**
+          retention-days: 5
