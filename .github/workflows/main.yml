@@ -6,30 +6,49 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: 'pnpm'           # activează cache pnpm automat
 
-      - name: Setup pnpm
+      - name: Setup pnpm 10
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
+          run_install: true       # rulează pnpm install
+          # Dacă ai lockfile vechi, îl lasă să se refacă:
+          # args: --no-frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+      # (opțional, dar util pt Next cache)
+      - name: Cache Next build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/next
+          key: next-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            next-${{ runner.os }}-
 
-      - name: Run lint
+      - name: Lint
         run: pnpm lint
 
-      - name: Run build
+      - name: Build
         run: pnpm build
 
       - name: Upload Next.js build artifact
