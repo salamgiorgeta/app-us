@@ -1,0 +1,43 @@
+name: Release & Preview Builds
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js & pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Package build (ZIP)
+        run: |
+          mkdir -p server_release_stage
+          cp -r .next public package.json next.config.ts server_release_stage/
+          cd server_release_stage
+          zip -qr ../app-us-build.zip .
+
+      - name: Upload ZIP artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-us-build
+          path: app-us-build.zip
+          retention-days: 7

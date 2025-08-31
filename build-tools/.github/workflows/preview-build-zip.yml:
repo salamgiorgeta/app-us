@@ -1,0 +1,64 @@
+name: CI (PR) — Build + ZIP
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build
+        run: pnpm build
+
+      # --- creează structura minimă pentru rulare/preview offline
+      - name: Stage build for ZIP
+        run: |
+          STAGE=".server_release_stage"
+          rm -rf "$STAGE"
+          mkdir -p "$STAGE"
+          # Copiem artefactele necesare pentru Next.js build
+          cp -r .next public "$STAGE"/
+          # Config + runtime
+          if [ -f next.config.ts ]; then cp next.config.ts "$STAGE"/; fi
+          if [ -f next.config.js ]; then cp next.config.js "$STAGE"/; fi
+          cp package.json "$STAGE"/
+          # (opțional) exemple env
+          if [ -f .env.example ]; then cp .env.example "$STAGE"/; fi
+
+      - name: Create ZIP
+        run: |
+          cd .server_release_stage
+          zip -qr ../app-us-build-preview.zip .
+
+      - name: Upload artifact (Preview ZIP)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-us-build-preview
+          path: app-us-build-preview.zip
+          retention-days: 7
+          if-no-files-found: error
