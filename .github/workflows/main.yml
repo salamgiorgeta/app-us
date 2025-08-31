@@ -13,24 +13,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Setup Node.js + cache
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
 
-      # Setup pnpm (acțiune oficială)
+      # ⬅️ Asigură pnpm în PATH prin Corepack (rezolvă "Unable to locate executable file: pnpm")
+      - name: Enable Corepack and activate pnpm v9
+        run: |
+          corepack enable
+          corepack prepare pnpm@9.15.4 --activate
+          pnpm -v
+          node -v
+
+      # (opțional, dar poți păstra) — acțiunea pnpm; acum e sigură deoarece pnpm există deja
       - name: Setup pnpm v9
         uses: pnpm/action-setup@v4
         with:
           version: 9
-          run_install: false   # lăsăm instalarea separată
-
-      - name: Print tool versions
-        run: |
-          node -v
-          pnpm -v
+          run_install: false
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
