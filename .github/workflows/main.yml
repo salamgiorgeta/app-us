@@ -17,19 +17,22 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22          # ok pentru Next 15 și engines din package.json
-          cache: 'pnpm'             # cache pe pnpm store (mai rapid)
+          node-version: 22
+          cache: 'pnpm'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10               # pnpm 10.x (evită warning-urile cu 9.x)
-          run_install: true         # rulează pnpm install automat, cu lockfile
+          version: 9
+          run_install: false   # dezactivăm instalarea automată
 
-      - name: Show tool versions
+      - name: Show versions
         run: |
           node -v
           pnpm -v
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Run lint
         run: pnpm lint
@@ -38,8 +41,8 @@ jobs:
         run: pnpm build
 
       - name: Upload Next.js build artifact
-        if: success()
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: next-build
           path: |
