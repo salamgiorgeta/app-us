@@ -1,0 +1,39 @@
+name: CI (pnpm + Next)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # (opțional) dacă ai nevoie de env ca să nu pice build-ul, deblochează:
+      # - name: Create CI env
+      #   run: printf "NEXT_PUBLIC_APP_ENV=ci\n" > .env.local
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (if present)
+        run: pnpm lint --if-present
+
+      - name: Build
+        run: pnpm build
