@@ -1,1 +1,44 @@
+name: Setup pnpm v9 with Corepack
+description: Enable Corepack, prepare pnpm, cache pnpm store, and make pnpm available in PATH
+inputs:
+  node-version:
+    description: Node.js version to use
+    required: false
+    default: '20'
+  pnpm-version:
+    description: pnpm version to activate via Corepack
+    required: false
+    default: '9.15.4'
+  cache-dep-path:
+    description: File(s) that influence pnpm store cache key
+    required: false
+    default: 'pnpm-lock.yaml'
 
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Enable Corepack and activate pnpm
+      shell: bash
+      run: |
+        corepack enable
+        corepack prepare pnpm@${{ inputs.pnpm-version }} --activate
+        echo "pnpm version:"; pnpm -v
+        echo "node version:"; node -v
+
+    - name: Cache pnpm store
+      uses: actions/cache@v4
+      with:
+        path: ~/.pnpm-store
+        key: ${{ runner.os }}-pnpm-store-${{ hashFiles(inputs.cache-dep-path) }}
+        restore-keys: |
+          ${{ runner.os }}-pnpm-store-
+
+    # Dacă vrei să NU instalezi aici dependențele, comentează pasul de mai jos
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install --no-frozen-lockfile
