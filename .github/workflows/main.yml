@@ -30,3 +30,12 @@ jobs:
 
       - name: Run build
         run: pnpm build
+
+        - name: Upload Next.js build artifact
+  uses: actions/upload-artifact@v4
+  with:
+    name: next-build
+    path: |
+      .next/**
+      public/**
+    retention-days: 5
