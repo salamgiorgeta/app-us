@@ -14,19 +14,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Node.js
-       - name: Debug PATH
-        run: |
-          echo $PATH
-          which node
-          which npm
-          which pnpm || echo "⚠️ pnpm not found yet"
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm'
+          cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
 
-      # ⬅️ Asigură pnpm în PATH prin Corepack (rezolvă "Unable to locate executable file: pnpm")
       - name: Enable Corepack and activate pnpm v9
         run: |
           corepack enable
@@ -34,12 +27,12 @@ jobs:
           pnpm -v
           node -v
 
-      # (opțional, dar poți păstra) — acțiunea pnpm; acum e sigură deoarece pnpm există deja
-      - name: Setup pnpm v9
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-          run_install: false
+      - name: Debug PATH
+        run: |
+          echo "$PATH"
+          which node || true
+          which npm || true
+          which pnpm || true
 
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
