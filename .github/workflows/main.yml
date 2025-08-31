@@ -103,10 +103,49 @@ jobs:
           name: next-build
           path: .
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
+      deploy:
+    name: Deploy (Vercel prebuilt)
+    runs-on: ubuntu-latest
+    needs: build
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # pnpm & Node – păstrăm același setup ca în celelalte joburi
+      - name: Setup pnpm (composite)
+        uses: ./.github/actions/setup-pnpm
+
+      # Luăm artifactul produs de jobul build
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          working-directory: .
+          name: next-build
+          path: ./
+
+      # (opțional) listăm ce a venit in artifact – util pentru debug
+      - name: Show artifact content
+        run: |
+          ls -la
+          du -sh .next || true
+
+      # Pregătim config-ul local pentru Vercel (env + link proiect)
+      - name: Vercel pull (populate .vercel)
+        run: |
+          pnpm dlx vercel@latest pull --yes --environment=production \
+            --token "${{ secrets.VERCEL_TOKEN }}"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Deploy prebuilt (NU rebuilduiește; folosește .next/ din artifact)
+      - name: Vercel deploy (prebuilt)
+        id: vercel
+        run: |
+          URL=$(pnpm dlx vercel@latest deploy --prebuilt --prod \
+                --token "${{ secrets.VERCEL_TOKEN }}" 2>&1 | tee /dev/stderr | tail -n1)
+          echo "url=$URL" >> "$GITHUB_OUTPUT"
+
+      - name: Print deployment URL
+        run: echo "Deployed: ${{ steps.vercel.outputs.url }}"
