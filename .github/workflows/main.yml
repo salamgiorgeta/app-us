@@ -1,23 +1,3 @@
-name: CI (pnpm + Next)
-
-on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
-
-env:
-  CI: true
-  NEXT_TELEMETRY_DISABLED: "1"
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: false
-
-defaults:
-  run:
-    shell: bash
-
 jobs:
   lint:
     name: Lint
@@ -39,15 +19,6 @@ jobs:
           corepack prepare pnpm@9.15.4 --activate
           pnpm -v
           node -v
-
-      # (opțional, dar grăbește instalările între rulari)
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --prefer-offline --no-frozen-lockfile
@@ -74,20 +45,10 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
-          pnpm -v
-
-      - name: Restore pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --prefer-offline --no-frozen-lockfile
 
-      # Dacă ai Jest / Vitest, adaptează comanda
       - name: Run tests
         run: pnpm test --if-present
 
@@ -110,15 +71,6 @@ jobs:
         run: |
           corepack enable
           corepack prepare pnpm@9.15.4 --activate
-          pnpm -v
-
-      - name: Restore pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.pnpm-store
-          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
         run: pnpm install --prefer-offline --no-frozen-lockfile
@@ -128,7 +80,6 @@ jobs:
 
       - name: Upload Next.js build artifact
         uses: actions/upload-artifact@v4
-        if: success()
         with:
           name: next-build
           path: |
