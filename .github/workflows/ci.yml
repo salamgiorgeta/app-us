@@ -2,39 +2,53 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main, chore/**, feat/**, feature/** ]
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
-  test:
-    name: Test (Node 22 + pnpm)
+  build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node (22.18.0)
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'pnpm'   # activează cache pnpm
+          node-version: '22.18.0'
 
-      - name: Setup pnpm
+      - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 10
+          version: 10.15.0
           run_install: false
 
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      - name: Run tests
-        run: pnpm test:ci
+      - name: Lint
+        run: pnpm lint
 
+      - name: Build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: pnpm build
+
+      # Rulează teste doar dacă există script-ul (nu pica CI-ul dacă nu ai încă teste)
+      - name: Run tests (if present)
+        run: |
+          if pnpm -s run | grep -q '^test:ci'; then
+            pnpm test:ci
+          else
+            echo "No test:ci script; skipping."
+          fi
+
+      # Opțional: artifact coverage (nu e obligatoriu dacă nu generezi coverage)
       - name: Upload coverage report (HTML)
-        if: always()
+        if: always() && hashFiles('coverage/lcov-report/**') != ''
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html

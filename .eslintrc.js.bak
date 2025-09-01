@@ -9,13 +9,6 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
     "prettier", // acesta TREBUIE să fie ULTIMUL
   ],
-  rules: {
-    // ✅ ignoră parametrii/variabilele care încep cu "_" (ex: _req)
-    "@typescript-eslint/no-unused-vars": [
-      "error",
-      { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
-    ],
-  },
   overrides: [
     {
       files: ["next-env.d.ts", "**/*.d.ts"],
