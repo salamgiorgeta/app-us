@@ -1,0 +1,29 @@
+name: "Setup Node + pnpm (v9) with cache"
+description: "Instalează Node, activează pnpm via Corepack și configurează cache-ul"
+inputs:
+  node-version:
+    description: "Node.js version"
+    default: "20"
+  pnpm-version:
+    description: "pnpm version"
+    default: "9.15.4"
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: pnpm
+
+    - name: Enable Corepack & activate pnpm
+      shell: bash
+      run: |
+        set -euo pipefail
+        corepack enable
+        corepack prepare pnpm@${{ inputs.pnpm-version }} --activate
+        echo "PATH: $PATH"
+        which node
+        which pnpm
+        node -v
+        pnpm -v
