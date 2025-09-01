@@ -2,30 +2,38 @@ name: CI
 
 on:
   push:
+    branches: [ main, chore/**, feat/**, feature/** ]
   pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      # Setup pnpm
-      - uses: pnpm/action-setup@v4
+      - name: Setup Node (22.18.0) + pnpm
+        uses: actions/setup-node@v4
         with:
-          version: 9 # sau 10 dacă folosești pnpm v10 local
+          node-version: '22.18.0'
+          cache: 'pnpm'
 
-      # Setup Node.js (cu cache pnpm)
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "pnpm"
+      - name: Enable Corepack
+        run: corepack enable
 
-      # Instalează deps
-      - run: pnpm install --frozen-lockfile
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
 
-      # Lint
-      - run: pnpm lint
+      - name: Lint
+        run: pnpm lint
 
-      # Build (rulează doar dacă există script "build" în package.json)
-      - run: pnpm build --if-present
+      - name: Build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: pnpm build
