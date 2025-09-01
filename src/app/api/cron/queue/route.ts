@@ -1,1 +1,2 @@
-export async function GET(){return Response.json({ok:true,job:'queue'})}
+export const runtime = 'edge';
+export async function GET() { return Response.json({ ok: true, job: 'queue' }); }
