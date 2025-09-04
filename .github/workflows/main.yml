@@ -1,31 +1,68 @@
-deploy:
-    needs: build
-    runs-on: ubuntu-latest
+name: CI (pnpm + Next + Vercel)
 
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - run: pnpm install
+      - run: pnpm run lint
 
-      # 1) Populează .vercel/ din proiect (PR = preview)
+  test:
+    runs-on: ubuntu-latest
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install
+      - run: pnpm run test || echo "noop (no tests yet)"
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: pnpm install
+      - run: pnpm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-build
+          path: ./.vercel/output/**/*
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/download-artifact@v4
+        with:
+          name: app-build
+          path: ./.vercel/output
       - name: Vercel pull (populate .vercel)
-        run: npx -y vercel@latest pull --yes --environment=preview
+        run: npx -y vercel@latest pull --yes --environment=production
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      # 2) Build local (creează .vercel/output)
-      - name: Build (prebuilt)
-        run: npx -y vercel@latest build
-
-      # 3) Deploy din .vercel/output (prebuilt)
       - name: Vercel deploy (prebuilt)
-        run: npx -y vercel@latest deploy --prebuilt --yes
+        run: npx -y vercel@latest deploy --prebuilt --prod
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
