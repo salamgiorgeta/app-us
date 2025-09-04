@@ -1,24 +1,35 @@
-deploy:
-  needs: build
-  runs-on: ubuntu-latest
-  # rulează DOAR pe push în main (pe PR, Vercel face Preview automat)
-  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-  steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-    - uses: actions/download-artifact@v4
-      with:
-        name: app-build
-        path: .
-    - name: Vercel pull (populate .vercel)
-      run: npx -y vercel@latest pull --yes --environment=production
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-    - name: Vercel deploy (prebuilt)
-      run: npx -y vercel@latest deploy --prebuilt --yes
-      env:
-        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+name: Deploy (main)
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - run: pnpm install --frozen-lockfile
+
+      - name: Vercel pull (populate .vercel)
+        run: npx vercel@latest pull --yes --environment=production
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Vercel build
+        run: npx vercel@latest build
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      - name: Vercel deploy (prebuilt, prod)
+        run: npx vercel@latest deploy --prebuilt --prod
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
