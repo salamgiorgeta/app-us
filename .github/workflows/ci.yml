@@ -1,8 +1,10 @@
 deploy:
   needs: build
   runs-on: ubuntu-latest
+  # rulează doar când faci push pe main (pe PR Vercel face Preview automat)
   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
   steps:
+    - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
       with:
         node-version: '20'
