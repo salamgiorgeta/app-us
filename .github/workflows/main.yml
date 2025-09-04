@@ -116,7 +116,7 @@ jobs:
 
       - name: Vercel pull (populate .vercel)
         run: |
-          pnpm dlx vercel@latest pull --yes --environment=production \
+          npx -y vercel@latest pull --yes --environment=production \
             --token "${{ secrets.VERCEL_TOKEN }}"
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -125,7 +125,7 @@ jobs:
       - name: Vercel deploy (prebuilt)
         id: vercel
         run: |
-          URL=$(pnpm dlx vercel@latest deploy --prebuilt --prod \
+          URL=$(npx -y vercel@latest deploy --prebuilt --prod \
                 --token "${{ secrets.VERCEL_TOKEN }}" 2>&1 | tee /dev/stderr | tail -n1)
           echo "url=$URL" >> "$GITHUB_OUTPUT"
 
