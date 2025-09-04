@@ -1,55 +1,22 @@
-name: CI
-
-on:
-  push:
-    branches: [ main, chore/**, feat/**, feature/** ]
-  pull_request:
-    branches: [ main ]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node (22.18.0)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22.18.0'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10.15.0
-          run_install: false
-
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build
-        env:
-          NEXT_TELEMETRY_DISABLED: '1'
-        run: pnpm build
-
-      # Rulează teste doar dacă există script-ul (nu pica CI-ul dacă nu ai încă teste)
-      - name: Run tests (if present)
-        run: |
-          if pnpm -s run | grep -q '^test:ci'; then
-            pnpm test:ci
-          else
-            echo "No test:ci script; skipping."
-          fi
-
-      # Opțional: artifact coverage (nu e obligatoriu dacă nu generezi coverage)
-      - name: Upload coverage report (HTML)
-        if: always() && hashFiles('coverage/lcov-report/**') != ''
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: coverage/lcov-report
+deploy:
+  needs: build
+  runs-on: ubuntu-latest
+  if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+    - uses: actions/download-artifact@v4
+      with:
+        name: app-build
+        path: .
+    - name: Vercel pull (populate .vercel)
+      run: npx -y vercel@latest pull --yes --environment=production
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    - name: Vercel deploy (prebuilt)
+      run: npx -y vercel@latest deploy --prebuilt --yes
+      env:
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
