@@ -8,8 +8,8 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
-# Mapăm secretele o singură dată la ENV
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -47,7 +47,7 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
       - name: Tests
-        run: echo "noop (no tests yet)"
+        run: echo "no tests yet"
 
   build:
     runs-on: ubuntu-latest
@@ -63,24 +63,10 @@ jobs:
           corepack prepare pnpm@10.15.0 --activate
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
-
-      # Creează configurarea locală Vercel pentru PROD (non-interactiv)
       - name: Vercel pull (configure project)
-        run: npx -y vercel@latest pull --yes --environment=production
-        env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
-
-      # Face build precompilat -> .vercel/output
+        run: npx -y vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
       - name: Vercel build (prebuild)
-        run: npx -y vercel@latest build --prod
-        env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
-
-      # Următorul pas încarcă artefactul .vercel/output
+        run: npx -y vercel@latest build --token "$VERCEL_TOKEN"
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -88,19 +74,17 @@ jobs:
           path: .vercel/output
 
   deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
           name: app-build
           path: .vercel/output
-
-      # Deploy complet non-interactiv folosind prebuildul
       - name: Vercel deploy (prebuilt)
-        run: npx -y vercel@latest deploy --prebuilt --prod --yes
-        env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+        run: npx -y vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
