@@ -36,7 +36,6 @@ jobs:
           version: 10.15.0
           run_install: true
       - run: pnpm -v
-      # ai deja un "test": "echo \"(noop) no tests yet\"" în package.json
       - run: pnpm test
 
   build:
