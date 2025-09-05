@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# Valorile vin din Settings → Secrets and variables → Actions (le ai deja create)
+# Valorile vin din Settings → Secrets and variables → Actions
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -64,17 +64,15 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
 
-      # 1) configurăm proiectul local (.vercel) și 2) AUTENTIFICĂM CLI-ul explicit cu --token
+      # 1) „Vercel pull” ca să existe .vercel/project.json și env. Non-interactiv.
       - name: Vercel pull (configure project)
-        run: npx -y vercel@latest pull --yes --environment=production --token=${{ env.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+        run: npx -y vercel@latest pull --yes --environment=production --token "${{ env.VERCEL_TOKEN }}"
 
-      # construim PREBUILD local, ca să existe .vercel/output pentru deploy --prebuilt
-      - name: Vercel build (prebuild)
-        run: npx -y vercel@latest build --prod --token=${{ env.VERCEL_TOKEN }}
+      # 2) „Vercel build” produce .vercel/output
+      - name: Build with Vercel (prebuild)
+        run: npx -y vercel@latest build --token "${{ env.VERCEL_TOKEN }}"
 
+      # 3) Împachetăm .vercel/output ca artifact
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -91,14 +89,16 @@ jobs:
         with:
           node-version: 20
 
+      # 1) Descărcăm artifactul exact în .vercel/output
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: app-build
           path: .vercel/output
 
+      # 2) Deploy „prebuilt” — FORȚĂM non-interactiv cu --yes și trecem tokenul
       - name: Vercel deploy (prebuilt)
-        run: npx -y vercel@latest deploy --prebuilt --prod --token=${{ env.VERCEL_TOKEN }}
+        run: npx -y vercel@latest deploy --prebuilt --prod --yes --token "${{ env.VERCEL_TOKEN }}"
         env:
           VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
