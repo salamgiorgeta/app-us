@@ -9,11 +9,6 @@ on:
 permissions:
   contents: read
 
-env:
-  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -56,31 +51,23 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      # activăm pnpm doar dacă build-ul tău rulează scripturi pnpm (nu strică)
       - name: Enable pnpm (Corepack)
         run: |
           corepack enable
           corepack prepare pnpm@10.15.0 --activate
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
-
-      # pregătim proiectul Vercel (creează .vercel/)
       - name: Vercel pull (configure project)
         run: npx -y vercel@latest pull --yes --environment=production
         env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
-
-      # build precompilat -> creează .vercel/output
-      - name: Build with Vercel
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      - name: Build with Vercel (prebuild)
         run: npx -y vercel@latest build
         env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-
-      # urcăm artifactul corect: .vercel/output
-      - name: Upload build artifact
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      - name: Upload prebuilt output
         uses: actions/upload-artifact@v4
         with:
           name: vercel-output
@@ -90,17 +77,27 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: build
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: vercel-output
           path: .vercel/output
-
-      - name: Deploy prebuilt to Vercel
-        run: npx -y vercel@latest deploy --prebuilt --prod
+      - name: Check Vercel secrets presence (safe)
+        shell: bash
         env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          for v in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v is missing in repo secrets"; exit 1;
+            fi
+          done
+      - name: Deploy to Vercel (prebuilt)
+        run: npx -y vercel@latest deploy --prebuilt --prod --yes
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
