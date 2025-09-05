@@ -6,73 +6,113 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
+env:
+  # Completează în Settings → Secrets and variables → Actions
+  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
-      - uses: pnpm/action-setup@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run lint
+          version: 10.15.0
+
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
 
   test:
-    runs-on: ubuntu-latest
     needs: lint
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - run: pnpm install --frozen-lockfile
-      # Dacă nu ai teste, nu pica pipeline-ul:
-      - run: pnpm run test || echo "no tests"
+          version: 10.15.0
+
+      - run: pnpm install --no-frozen-lockfile
+
+      # ai script "test" în package.json (echo noop), deci va trece
+      - run: pnpm run test
 
   build:
-    runs-on: ubuntu-latest
     needs: test
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'pnpm'
+
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run build
-      - uses: actions/upload-artifact@v4
+          version: 10.15.0
+
+      - name: Install deps
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Vercel pull (populate .vercel/)
+        run: npx -y vercel@latest pull --yes --environment=production
+        env:
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+
+      # Pre-build local care produce .vercel/output/
+      - name: Vercel build (prebuilt)
+        run: npx -y vercel@latest build
+        env:
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+
+      # ÎNCARCĂM artefactul cu numele AȘTEPTAT de jobul deploy
+      - name: Upload prebuilt artifact
+        uses: actions/upload-artifact@v4
         with:
           name: app-build
-          path: .next
-          if-no-files-found: error
+          path: .vercel/output/**
 
   deploy:
+    # rulează doar pe push în main (nu pe PR)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
     needs: build
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - uses: actions/download-artifact@v4
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
         with:
           name: app-build
-          path: .next
-      - run: npx -y vercel@latest pull --yes --environment=production
-      - run: npx -y vercel@latest deploy --prebuilt --prod
+          path: .vercel/output
+
+      - name: Deploy to Vercel (prebuilt)
+        run: npx -y vercel@latest deploy --prebuilt --prod --yes
+        env:
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
