@@ -8,8 +8,8 @@ on:
 
 permissions:
   contents: read
-  id-token: write
 
+# Vin din Settings → Secrets and variables → Actions
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -47,7 +47,7 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
       - name: Tests
-        run: echo "no tests yet"
+        run: echo "noop (no tests yet)"
 
   build:
     runs-on: ubuntu-latest
@@ -63,10 +63,17 @@ jobs:
           corepack prepare pnpm@10.15.0 --activate
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
+
+      # 🧪 Verifică tokenul — dacă e invalid, se oprește aici cu mesaj clar
+      - name: Check Vercel token (whoami)
+        run: npx -y vercel@latest whoami --token "$VERCEL_TOKEN"
+
       - name: Vercel pull (configure project)
         run: npx -y vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+
       - name: Vercel build (prebuild)
-        run: npx -y vercel@latest build --token "$VERCEL_TOKEN"
+        run: npx -y vercel@latest build --prod
+
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
@@ -86,5 +93,6 @@ jobs:
         with:
           name: app-build
           path: .vercel/output
+
       - name: Vercel deploy (prebuilt)
         run: npx -y vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
