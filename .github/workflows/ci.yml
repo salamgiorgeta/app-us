@@ -9,7 +9,6 @@ on:
 permissions:
   contents: read
 
-# Variabile pentru deploy (vin din Secrets)
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -57,19 +56,35 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      # activăm pnpm doar dacă build-ul tău rulează scripturi pnpm (nu strică)
       - name: Enable pnpm (Corepack)
         run: |
           corepack enable
           corepack prepare pnpm@10.15.0 --activate
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
-      - name: Build (Next.js)
-        run: pnpm run build
+
+      # pregătim proiectul Vercel (creează .vercel/)
+      - name: Vercel pull (configure project)
+        run: npx -y vercel@latest pull --yes --environment=production
+        env:
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+
+      # build precompilat -> creează .vercel/output
+      - name: Build with Vercel
+        run: npx -y vercel@latest build
+        env:
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+
+      # urcăm artifactul corect: .vercel/output
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-build
-          path: .next
+          name: vercel-output
+          path: .vercel/output
           if-no-files-found: error
 
   deploy:
@@ -80,17 +95,12 @@ jobs:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
-          name: app-build
-          path: .next
+          name: vercel-output
+          path: .vercel/output
 
-      - name: Vercel pull (populate .vercel)
-        run: npx -y vercel@latest pull --yes --environment=production
+      - name: Deploy prebuilt to Vercel
+        run: npx -y vercel@latest deploy --prebuilt --prod
         env:
           VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
-
-      - name: Vercel deploy (prebuilt)
-        run: npx -y vercel@latest deploy --prebuilt --prod
-        env:
-          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
