@@ -10,28 +10,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Node + cache pnpm
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      - name: Install pnpm
-        run: npm i -g pnpm@9
+      # Instalează pnpm și rulează pnpm install
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: true
 
-      - name: Install deps
-        run: pnpm install --frozen-lockfile
-
-      # Leagă proiectul local la Vercel și setează env=production (non-interactiv)
-      - name: Vercel pull (link project)
+      # Leagă repo-ul de proiectul Vercel și trage env-urile (non-interactiv)
+      - name: Vercel pull (production)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          npx vercel@latest pull --yes --environment=production \
-            --token="$VERCEL_TOKEN" \
-            --scope "salamgiorgeta85-8868"
+          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Generează .vercel/output
-      - name: Build with Vercel (prebuild)
+      # Build local → .vercel/output (prebuilt)
+      - name: Vercel build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx vercel@latest build --token="$VERCEL_TOKEN"
@@ -53,16 +52,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: vercel-build
-          # IMPORTANT: descarcă în rădăcina repo-ului, ca să ai ./.vercel/output/…
           path: .
 
+      # Deploy non-interactiv (observă --yes)
       - name: Deploy to Vercel (prebuilt)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          npx vercel@latest deploy \
-            --prebuilt \
-            --prod \
-            --yes \
-            --token="$VERCEL_TOKEN" \
-            --scope "salamgiorgeta85-8868"
+          npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
