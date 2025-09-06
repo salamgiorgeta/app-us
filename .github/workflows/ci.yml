@@ -9,7 +9,7 @@ on:
 permissions:
   contents: read
 
-# Vin din Settings → Secrets and variables → Actions
+# Secretele trebuie setate în GitHub → Settings → Secrets and variables → Actions
 env:
   VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
   VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
@@ -48,11 +48,7 @@ jobs:
         run: pnpm install --frozen-lockfile=false
       - name: Tests
         run: |
-          if pnpm -s run | grep -qE '(^|[[:space:]])test([[:space:]]|:)'; then
-            pnpm test
-          else
-            echo "noop (no tests yet)"
-          fi
+          pnpm run -s test || echo "No tests configured"
 
   build:
     runs-on: ubuntu-latest
@@ -69,15 +65,13 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
 
-      # Verifică tokenul – dacă e invalid, se oprește aici cu mesaj clar
+      # Verifică tokenul devreme ca să nu pice mai târziu
       - name: Check Vercel token (whoami)
         run: npx -y vercel@latest whoami --token "$VERCEL_TOKEN"
 
+      # Folosește VERCEL_ORG_ID și VERCEL_PROJECT_ID din env
       - name: Vercel pull (configure project)
-        run: npx -y vercel@latest pull --yes --environment=production \
-              --token "$VERCEL_TOKEN" \
-              --project "$VERCEL_PROJECT_ID" \
-              --scope "$VERCEL_ORG_ID"
+        run: npx -y vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
 
       - name: Vercel build (prebuild)
         run: npx -y vercel@latest build --prod
@@ -89,7 +83,6 @@ jobs:
           path: .vercel/output
 
   deploy:
-    # Doar pe push în main
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: build
@@ -97,7 +90,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
@@ -105,7 +97,4 @@ jobs:
           path: .vercel/output
 
       - name: Vercel deploy (prebuilt)
-        run: npx -y vercel@latest deploy --prebuilt --prod \
-              --token "$VERCEL_TOKEN" \
-              --project "$VERCEL_PROJECT_ID" \
-              --scope "$VERCEL_ORG_ID"
+        run: npx -y vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
