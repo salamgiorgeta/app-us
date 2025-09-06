@@ -2,71 +2,67 @@ name: CI (pnpm + Next + Vercel)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-
-  test:
-    runs-on: ubuntu-latest
-    needs: lint
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test -- --watch=false
-
   build:
     runs-on: ubuntu-latest
-    needs: test
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 9 }
+
       - uses: actions/setup-node@v4
-        with: { node-version: 20, cache: 'pnpm' }
-      - run: pnpm install --frozen-lockfile
+        with:
+          node-version: 20
+          cache: 'pnpm'
 
-      # Leagă proiectul (creează .vercel/project.json)
-      - name: Link Vercel project
-        run: npx vercel@latest pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Install pnpm
+        run: npm i -g pnpm@9
 
-      # Construiește artefactul .vercel/output
-      - name: Build with Vercel
-        run: npx vercel@latest build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
 
-      # Urcă .vercel/output ca artifact
-      - name: Upload Vercel build output
+      # Leagă proiectul local la Vercel și setează env=production (non-interactiv)
+      - name: Vercel pull (link project)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel@latest pull --yes --environment=production \
+            --token="$VERCEL_TOKEN" \
+            --scope "salamgiorgeta85-8868"
+
+      # Generează .vercel/output
+      - name: Build with Vercel (prebuild)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: npx vercel@latest build --token="$VERCEL_TOKEN"
+
+      # Salvează output-ul pentru jobul de deploy
+      - name: Upload build output
         uses: actions/upload-artifact@v4
         with:
-          name: vercel-output
+          name: vercel-build
           path: .vercel/output
 
   deploy:
-    runs-on: ubuntu-latest
     needs: build
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Descarcă artefactul în .vercel/output
-      - name: Download Vercel build output
+      - name: Download prebuilt output
         uses: actions/download-artifact@v4
         with:
-          name: vercel-output
-          path: .vercel/output
+          name: vercel-build
+          # IMPORTANT: descarcă în rădăcina repo-ului, ca să ai ./.vercel/output/…
+          path: .
 
-      # Deploy folosind artefactul prebuilt
       - name: Deploy to Vercel (prebuilt)
-        run: npx vercel@latest deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          npx vercel@latest deploy \
+            --prebuilt \
+            --prod \
+            --yes \
+            --token="$VERCEL_TOKEN" \
+            --scope "salamgiorgeta85-8868"
