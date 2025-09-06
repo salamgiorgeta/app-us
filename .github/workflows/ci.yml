@@ -2,54 +2,67 @@ name: CI (pnpm + Next.js + Vercel)
 
 on:
   push:
-    branches: [ "main" ]
-  workflow_dispatch:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
+      # 1) Instalează pnpm ÎNAINTE de setup-node ca să nu mai pice "pnpm not found"
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
           run_install: false
 
+      - name: Setup Node.js 20 (cache pnpm)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
       - name: Install deps
         run: pnpm install --frozen-lockfile
 
-      - name: Pull env from Vercel (production)
-        run: |
-          npx vercel pull --yes \
-            --environment=production \
-            --token="$VERCEL_TOKEN" \
-            --project="$VERCEL_PROJECT_ID" \
-            --org="$VERCEL_ORG_ID"
+      # 2) Trage env-urile din Vercel pentru targetul corect
+      - name: Pull env (preview)
+        if: github.ref != 'refs/heads/main'
+        run: npx vercel pull --yes --environment=preview --token="$VERCEL_TOKEN"
 
-      - name: Build (prebuild) for production
-        run: |
-          npx vercel build --prod
+      - name: Pull env (production)
+        if: github.ref == 'refs/heads/main'
+        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      - name: Deploy to Vercel (production) using prebuilt output
-        run: |
-          npx vercel deploy --prebuilt --prod --yes \
-            --token="$VERCEL_TOKEN" \
-            --project="$VERCEL_PROJECT_ID" \
-            --org="$VERCEL_ORG_ID"
+      # 3) Fă prebuild cu Vercel. Pentru prod trebuie --prod ca să nu rezulte "preview".
+      - name: Build with Vercel (preview)
+        if: github.ref != 'refs/heads/main'
+        run: npx vercel build
+
+      - name: Build with Vercel (production)
+        if: github.ref == 'refs/heads/main'
+        run: npx vercel build --prod
+
+      # 4) Deploy din prebuilt; adaugă --yes ca să sară confirmarea
+      - name: Deploy to Vercel (preview, prebuilt)
+        if: github.ref != 'refs/heads/main'
+        run: npx vercel deploy --prebuilt --yes --token="$VERCEL_TOKEN"
+
+      - name: Deploy to Vercel (production, prebuilt)
+        if: github.ref == 'refs/heads/main'
+        run: npx vercel deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
