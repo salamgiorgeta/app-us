@@ -1,15 +1,13 @@
-name: CI (pnpm + Next.js + Vercel)
-
+name: CI (pnpm + Next + Vercel)
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,13 +21,15 @@ jobs:
         uses: pnpm/action-setup@v4
         with:
           version: 9
-          run_install: true   # rulează pnpm install
 
-      - name: Pull env from Vercel (production)
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Pull env (production)
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Build with Vercel (prebuilt)
-        run: npx vercel build --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Build (prebuilt) for production
+        run: npx vercel build --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
 
-      - name: Deploy to Vercel (prod)
+      - name: Deploy (production) using prebuilt
         run: npx vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }}
