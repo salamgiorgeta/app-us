@@ -10,7 +10,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node + cache pnpm
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -22,20 +21,18 @@ jobs:
           version: 9
           run_install: true
 
-      # Leagă repo-ul de proiectul Vercel și trage env-urile (non-interactiv)
+      # Trage config/ENV din Vercel (non-interactiv)
       - name: Vercel pull (production)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
 
-      # Build local → .vercel/output (prebuilt)
+      # Build local → .vercel/output
       - name: Vercel build
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: npx vercel@latest build --token="$VERCEL_TOKEN"
 
-      # Salvează output-ul pentru jobul de deploy
       - name: Upload build output
         uses: actions/upload-artifact@v4
         with:
@@ -54,9 +51,7 @@ jobs:
           name: vercel-build
           path: .
 
-      # Deploy non-interactiv (observă --yes)
       - name: Deploy to Vercel (prebuilt)
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
+        run: npx vercel@latest deploy --prebuilt --prod --yes --token="$VERCEL_TOKEN"
