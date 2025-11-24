@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # 1) Instalează pnpm ÎNAINTE de setup-node ca să nu mai pice "pnpm not found"
       - name: Setup pnpm
